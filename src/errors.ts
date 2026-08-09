@@ -62,13 +62,14 @@ export class ERLCRateLimitError extends ERLCApiError {
 
   constructor(
     options: ERLCApiErrorOptions & {
+      message?: string
       bucket?: string
       limit?: number
       remaining?: number
       resetAt?: Date
     },
   ) {
-    super("Rate limited by the ER:LC API.", options)
+    super(options.message ?? "Rate limited by the ER:LC API.", options)
     this.name = "ERLCRateLimitError"
     this.bucket = options.bucket
     this.limit = options.limit

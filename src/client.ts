@@ -105,8 +105,12 @@ export class ERLCClient {
     const res = await this.fetchImpl(`${this.baseUrl}${path}`, { ...init, headers })
 
     if (res.status === 429) {
+      const body = await safeJson(res)
       throw new ERLCRateLimitError({
         status: res.status,
+        code: extractCode(body),
+        body,
+        message: extractMessage(body),
         bucket: res.headers.get("X-RateLimit-Bucket") ?? undefined,
         limit: numberOrUndefined(res.headers.get("X-RateLimit-Limit")),
         remaining: numberOrUndefined(res.headers.get("X-RateLimit-Remaining")),
@@ -117,12 +121,14 @@ export class ERLCClient {
     if (!res.ok) {
       const body = await safeJson(res)
       const message = extractMessage(body) ?? res.statusText
-      if (res.status === 403) throw new ERLCAuthError({ status: res.status, body })
+      if (res.status === 403)
+        throw new ERLCAuthError({ status: res.status, code: extractCode(body), body })
       if (res.status === 400)
         throw new ERLCBadRequestError(message, { status: res.status, code: extractCode(body), body })
       if (res.status === 422)
         throw new ERLCServerOfflineError(message, {
           status: res.status,
+          code: extractCode(body),
           commandId: extractCommandId(body),
           body,
         })
@@ -133,7 +139,7 @@ export class ERLCClient {
           commandId: extractCommandId(body),
           body,
         })
-      throw new ERLCApiError(message, { status: res.status, body })
+      throw new ERLCApiError(message, { status: res.status, code: extractCode(body), body })
     }
 
     return (await res.json()) as T
